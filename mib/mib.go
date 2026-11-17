@@ -91,6 +91,8 @@ const (
 )
 
 // DefValAs extracts the default value as the concrete type T.
+// Slice values are copied so callers may modify the result without affecting
+// the default value.
 func DefValAs[T any](d DefVal) (T, bool) { return model.DefValAs[T](d) }
 
 // --- Unresolved references ---

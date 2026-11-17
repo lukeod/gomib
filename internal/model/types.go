@@ -350,8 +350,9 @@ func NewDefValOID(oid OID, raw string) DefVal {
 // Kind returns the type of the default value.
 func (d DefVal) Kind() DefValKind { return d.kind }
 
-// Value returns the interpreted value.
-func (d DefVal) Value() any { return d.value }
+// Value returns the interpreted value, copying any slice so callers may
+// modify the result without affecting the default value.
+func (d DefVal) Value() any { return d.clone().value }
 
 // Raw returns the original MIB syntax.
 func (d DefVal) Raw() string { return d.raw }
@@ -431,9 +432,10 @@ func (k DefValKind) String() string {
 // DefValAs extracts the default value as the concrete type T.
 // It returns the value and true if the underlying value is assignable to T,
 // or the zero value and false otherwise. For example, DefValAs[int64](d)
-// succeeds when d.Kind() is DefValKindInt.
+// succeeds when d.Kind() is DefValKindInt. Slice values are copied so callers
+// may modify the result without affecting the default value.
 func DefValAs[T any](d DefVal) (T, bool) {
-	v, ok := d.value.(T)
+	v, ok := d.Value().(T)
 	return v, ok
 }
 
@@ -476,6 +478,10 @@ func (cm *ComplianceModule) clone() ComplianceModule {
 	for i := range result.Objects {
 		result.Objects[i].Syntax = result.Objects[i].Syntax.clone()
 		result.Objects[i].WriteSyntax = result.Objects[i].WriteSyntax.clone()
+		if access := result.Objects[i].MinAccess; access != nil {
+			copied := *access
+			result.Objects[i].MinAccess = &copied
+		}
 	}
 	return result
 }
@@ -506,10 +512,20 @@ func (cm *CapabilitiesModule) clone() CapabilitiesModule {
 	for i := range result.ObjectVariations {
 		result.ObjectVariations[i].Syntax = result.ObjectVariations[i].Syntax.clone()
 		result.ObjectVariations[i].WriteSyntax = result.ObjectVariations[i].WriteSyntax.clone()
+		if access := result.ObjectVariations[i].Access; access != nil {
+			copied := *access
+			result.ObjectVariations[i].Access = &copied
+		}
 		result.ObjectVariations[i].CreationRequires = slices.Clone(result.ObjectVariations[i].CreationRequires)
 		result.ObjectVariations[i].DefVal = result.ObjectVariations[i].DefVal.clone()
 	}
 	result.NotificationVariations = slices.Clone(cm.NotificationVariations)
+	for i := range result.NotificationVariations {
+		if access := result.NotificationVariations[i].Access; access != nil {
+			copied := *access
+			result.NotificationVariations[i].Access = &copied
+		}
+	}
 	return result
 }
 

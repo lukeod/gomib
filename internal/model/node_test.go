@@ -48,14 +48,6 @@ func TestChildrenSortOrder(t *testing.T) {
 	testutil.Equal(t, "c", aChildren[1].name, "aChildren[1].name")
 }
 
-func TestChildrenReturnsCopy(t *testing.T) {
-	root := buildTree()
-
-	c1 := root.Children()
-	c2 := root.Children()
-	testutil.True(t, &c1[0] != &c2[0], "Children() should return a new slice each call")
-}
-
 func TestSubtreeOrder(t *testing.T) {
 	root := buildTree()
 

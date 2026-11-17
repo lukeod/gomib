@@ -26,7 +26,8 @@
 // Model types use unexported fields with accessor methods. Small value
 // structs such as [Range], [NamedValue], [Revision], [IndexEntry], and
 // [TrapInfo] expose fields directly. Slice-returning accessors return copies,
-// so callers may modify returned slices without affecting the model.
+// including nested mutable values, so callers may modify returned data without
+// affecting the model. [DefVal.Value] and [DefValAs] also copy slice values.
 //
 // # Resolution
 //

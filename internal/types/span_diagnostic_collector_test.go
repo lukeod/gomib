@@ -2,6 +2,8 @@ package types
 
 import (
 	"testing"
+
+	"github.com/golangsnmp/gomib/internal/testutil"
 )
 
 func TestSpanDiagnosticCollector_EmitDiagnostic(t *testing.T) {
@@ -100,20 +102,10 @@ func TestSpanDiagnosticCollector_DiagnosticsFrom(t *testing.T) {
 	}
 }
 
-func TestSpanDiagnosticCollector_DiagnosticsClone(t *testing.T) {
-	config := DefaultConfig()
-	c := NewSpanDiagnosticCollector(config)
-
+func TestSpanDiagnosticCollector_DiagnosticsIsolation(t *testing.T) {
+	c := NewSpanDiagnosticCollector(DefaultConfig())
 	c.EmitDiagnostic(DiagParseError, NewSpan(0, 5), "original")
-
-	diags := c.Diagnostics()
-	diags[0].Message = "mutated"
-
-	// Original should be unaffected.
-	got := c.Diagnostics()
-	if got[0].Message != "original" {
-		t.Errorf("Diagnostics() should return a clone; original was mutated")
-	}
+	testutil.SliceIsolated(t, c.Diagnostics)
 }
 
 func TestSpanDiagnosticCollector_ResetDiagnostics(t *testing.T) {

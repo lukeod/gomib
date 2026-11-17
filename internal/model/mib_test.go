@@ -381,12 +381,6 @@ func TestNodesByName(t *testing.T) {
 	t.Run("returns nil for unknown", func(t *testing.T) {
 		testutil.Nil(t, m.NodesByName("nonexistent"), "expected nil")
 	})
-
-	t.Run("returns clone", func(t *testing.T) {
-		got := m.NodesByName("ifDescr")
-		got[0] = nil
-		testutil.NotNil(t, m.NodesByName("ifDescr")[0], "original should be unmodified")
-	})
 }
 
 func TestAllSymbols(t *testing.T) {

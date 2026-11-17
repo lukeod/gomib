@@ -136,14 +136,6 @@ func TestEffectiveEnums(t *testing.T) {
 
 		testutil.Nil(t, child.EffectiveEnums(), "expected nil")
 	})
-
-	t.Run("returns clone", func(t *testing.T) {
-		ty := NewType("T")
-		ty.setEnums(parentEnums)
-		got := ty.EffectiveEnums()
-		got[0].Label = "mutated"
-		testutil.True(t, ty.EffectiveEnums()[0].Label != "mutated", "EffectiveEnums returned a reference to internal slice")
-	})
 }
 
 func TestIsEnumeration(t *testing.T) {

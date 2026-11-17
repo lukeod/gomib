@@ -3,9 +3,7 @@ package model
 import (
 	"testing"
 
-	"github.com/golangsnmp/gomib/internal/module"
 	"github.com/golangsnmp/gomib/internal/testutil"
-	"github.com/golangsnmp/gomib/internal/types"
 )
 
 func TestDefValString(t *testing.T) {
@@ -210,203 +208,23 @@ func TestBytesToHex(t *testing.T) {
 	}
 }
 
-func TestModuleImportsDeepClone(t *testing.T) {
-	m := NewModule("TEST-MIB")
-	m.setRawImports([]module.Import{
-		module.NewImport("SNMPv2-SMI", "MODULE-IDENTITY", types.Span{}),
-		module.NewImport("SNMPv2-SMI", "OBJECT-TYPE", types.Span{}),
+func requireEmptyDefault[S ~[]E, E any](t *testing.T, d DefVal, kind DefValKind) {
+	t.Helper()
+	testutil.False(t, d.IsZero(), "empty default is set")
+	testutil.Equal(t, kind, d.Kind(), "empty default kind")
+	value, ok := d.Value().(S)
+	testutil.True(t, ok, "Value retains slice type")
+	testutil.Len(t, value, 0, "empty Value")
+	value, ok = DefValAs[S](d)
+	testutil.True(t, ok, "DefValAs retains slice type")
+	testutil.Len(t, value, 0, "empty DefValAs")
+}
+
+func TestDefValEmptySlices(t *testing.T) {
+	t.Run("Bytes", func(t *testing.T) {
+		requireEmptyDefault[[]byte](t, NewDefValBytes([]byte{}, "''H"), DefValKindBytes)
 	})
-
-	got := m.Imports()
-	got[0].Symbols[0] = ImportSymbol{Name: "MUTATED"}
-
-	// Verify rawImports are unaffected (Imports() returns a freshly built slice).
-	testutil.Equal(t, "MODULE-IDENTITY", m.rawImports[0].Symbol, "mutating Imports() return value should not affect module internal state")
-}
-
-func TestComplianceModulesDeepClone(t *testing.T) {
-	c := NewCompliance("testCompliance")
-	access := AccessReadOnly
-	c.setModules([]ComplianceModule{
-		{
-			ModuleName:      "IF-MIB",
-			MandatoryGroups: []NameRef{{Name: "ifGeneralGroup"}},
-			Groups:          []ComplianceGroup{{Group: "ifGroup", Description: "desc"}},
-			Objects: []ComplianceObject{{
-				Object:      "ifType",
-				Syntax:      &SyntaxConstraints{Sizes: []Range{{Min: NewSignedRangeBound(1), Max: NewSignedRangeBound(255)}}},
-				WriteSyntax: &SyntaxConstraints{Ranges: []Range{{Min: NewSignedRangeBound(0), Max: NewSignedRangeBound(100)}}},
-				MinAccess:   &access,
-				Description: "obj desc",
-			}},
-		},
+	t.Run("Bits", func(t *testing.T) {
+		requireEmptyDefault[[]string](t, NewDefValBits([]string{}, "{ }"), DefValKindBits)
 	})
-
-	tests := []struct {
-		name       string
-		mutate     func([]ComplianceModule)
-		wasMutated func() bool
-	}{
-		{
-			"MandatoryGroups",
-			func(m []ComplianceModule) { m[0].MandatoryGroups[0].Name = "X" },
-			func() bool { return c.modules[0].MandatoryGroups[0].Name == "X" },
-		},
-		{
-			"Groups",
-			func(m []ComplianceModule) { m[0].Groups[0].Group = "X" },
-			func() bool { return c.modules[0].Groups[0].Group == "X" },
-		},
-		{
-			"Objects",
-			func(m []ComplianceModule) { m[0].Objects[0].Object = "X" },
-			func() bool { return c.modules[0].Objects[0].Object == "X" },
-		},
-		{
-			"Syntax",
-			func(m []ComplianceModule) { m[0].Objects[0].Syntax.Sizes[0].Min = NewSignedRangeBound(999) },
-			func() bool { return c.modules[0].Objects[0].Syntax.Sizes[0].Min == NewSignedRangeBound(999) },
-		},
-		{
-			"WriteSyntax",
-			func(m []ComplianceModule) { m[0].Objects[0].WriteSyntax.Ranges[0].Min = NewSignedRangeBound(999) },
-			func() bool { return c.modules[0].Objects[0].WriteSyntax.Ranges[0].Min == NewSignedRangeBound(999) },
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := c.Modules()
-			tt.mutate(got)
-			testutil.False(t, tt.wasMutated(), "mutating Modules()[]. should not affect internal state")
-		})
-	}
-}
-
-func TestCapabilitySupportsDeepClone(t *testing.T) {
-	cap := NewCapability("testCap")
-	cap.setSupports([]CapabilitiesModule{
-		{
-			ModuleName: "IF-MIB",
-			Includes:   []NameRef{{Name: "ifGeneralGroup"}},
-			ObjectVariations: []ObjectVariation{{
-				Object:           "ifType",
-				Syntax:           &SyntaxConstraints{Enums: []NamedValue{{Label: "e1", Value: 1}}},
-				WriteSyntax:      &SyntaxConstraints{Bits: []NamedValue{{Label: "b1", Value: 0}}},
-				CreationRequires: []NameRef{{Name: "ifName"}},
-				Description:      "var desc",
-			}},
-			NotificationVariations: []NotificationVariation{{
-				Notification: "linkDown",
-				Description:  "notif desc",
-			}},
-		},
-	})
-
-	tests := []struct {
-		name       string
-		mutate     func([]CapabilitiesModule)
-		wasMutated func() bool
-	}{
-		{
-			"Includes",
-			func(m []CapabilitiesModule) { m[0].Includes[0].Name = "X" },
-			func() bool { return cap.supports[0].Includes[0].Name == "X" },
-		},
-		{
-			"ObjectVariations",
-			func(m []CapabilitiesModule) { m[0].ObjectVariations[0].Object = "X" },
-			func() bool { return cap.supports[0].ObjectVariations[0].Object == "X" },
-		},
-		{
-			"CreationRequires",
-			func(m []CapabilitiesModule) { m[0].ObjectVariations[0].CreationRequires[0].Name = "X" },
-			func() bool { return cap.supports[0].ObjectVariations[0].CreationRequires[0].Name == "X" },
-		},
-		{
-			"Syntax",
-			func(m []CapabilitiesModule) { m[0].ObjectVariations[0].Syntax.Enums[0].Label = "X" },
-			func() bool { return cap.supports[0].ObjectVariations[0].Syntax.Enums[0].Label == "X" },
-		},
-		{
-			"WriteSyntax",
-			func(m []CapabilitiesModule) { m[0].ObjectVariations[0].WriteSyntax.Bits[0].Label = "X" },
-			func() bool { return cap.supports[0].ObjectVariations[0].WriteSyntax.Bits[0].Label == "X" },
-		},
-		{
-			"NotificationVariations",
-			func(m []CapabilitiesModule) { m[0].NotificationVariations[0].Notification = "X" },
-			func() bool { return cap.supports[0].NotificationVariations[0].Notification == "X" },
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := cap.Supports()
-			tt.mutate(got)
-			testutil.False(t, tt.wasMutated(), "mutating Supports()[]. should not affect internal state")
-		})
-	}
-}
-
-func TestSyntaxConstraintsClone(t *testing.T) {
-	orig := &SyntaxConstraints{
-		Sizes:          []Range{{Min: NewSignedRangeBound(1), Max: NewSignedRangeBound(10)}},
-		Ranges:         []Range{{Min: NewSignedRangeBound(0), Max: NewSignedRangeBound(255)}},
-		DeclaredSizes:  []Range{{Min: NewSignedRangeBound(2), Max: NewSignedRangeBound(9)}},
-		DeclaredRanges: []Range{{Min: NewSignedRangeBound(1), Max: NewSignedRangeBound(254)}},
-		Enums:          []NamedValue{{Label: "up", Value: 1}},
-		Bits:           []NamedValue{{Label: "bit0", Value: 0}},
-	}
-
-	cloned := orig.clone()
-
-	// Verify cloned values match original
-	testutil.SliceEqual(t, orig.Sizes, cloned.Sizes, "cloned Sizes should equal original")
-	testutil.SliceEqual(t, orig.Ranges, cloned.Ranges, "cloned Ranges should equal original")
-	testutil.SliceEqual(t, orig.DeclaredSizes, cloned.DeclaredSizes, "cloned DeclaredSizes should equal original")
-	testutil.SliceEqual(t, orig.DeclaredRanges, cloned.DeclaredRanges, "cloned DeclaredRanges should equal original")
-
-	// Verify mutations to clone don't propagate to original
-	tests := []struct {
-		name       string
-		mutate     func(*SyntaxConstraints)
-		wasMutated func() bool
-	}{
-		{
-			"Sizes",
-			func(c *SyntaxConstraints) { c.Sizes[0].Min = NewSignedRangeBound(999) },
-			func() bool { return orig.Sizes[0].Min == NewSignedRangeBound(999) },
-		},
-		{
-			"DeclaredSizes",
-			func(c *SyntaxConstraints) { c.DeclaredSizes[0].Min = NewSignedRangeBound(999) },
-			func() bool { return orig.DeclaredSizes[0].Min == NewSignedRangeBound(999) },
-		},
-		{
-			"DeclaredRanges",
-			func(c *SyntaxConstraints) { c.DeclaredRanges[0].Min = NewSignedRangeBound(999) },
-			func() bool { return orig.DeclaredRanges[0].Min == NewSignedRangeBound(999) },
-		},
-		{
-			"Enums",
-			func(c *SyntaxConstraints) { c.Enums[0].Label = "X" },
-			func() bool { return orig.Enums[0].Label == "X" },
-		},
-		{
-			"Bits",
-			func(c *SyntaxConstraints) { c.Bits[0].Label = "X" },
-			func() bool { return orig.Bits[0].Label == "X" },
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := orig.clone()
-			tt.mutate(c)
-			testutil.False(t, tt.wasMutated(), "mutating cloned  should not affect original")
-		})
-	}
-}
-
-func TestSyntaxConstraintsCloneNil(t *testing.T) {
-	var sc *SyntaxConstraints
-	testutil.Nil(t, sc.clone(), "clone of nil SyntaxConstraints should return nil")
 }

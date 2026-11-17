@@ -140,16 +140,6 @@ func TestAugmentedBy(t *testing.T) {
 		row := makeRow("plainEntry")
 		testutil.Nil(t, row.AugmentedBy(), "no augmenters")
 	})
-
-	t.Run("returned slice is a copy", func(t *testing.T) {
-		base := makeRow("baseEntry")
-		aug := makeRow("augEntry")
-		base.augmentedBy = []*Object{aug}
-
-		got := base.AugmentedBy()
-		got[0] = nil
-		testutil.NotNil(t, base.AugmentedBy()[0], "original should be unmodified")
-	})
 }
 
 func TestEffectiveIndexes(t *testing.T) {

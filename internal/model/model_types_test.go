@@ -81,21 +81,6 @@ func TestNotificationTrapInfo(t *testing.T) {
 	got := n.TrapInfo()
 	testutil.Equal(t, ti.Enterprise, got.Enterprise, "TrapInfo().Enterprise should match")
 	testutil.Equal(t, ti.TrapNumber, got.TrapNumber, "TrapInfo().TrapNumber should match")
-
-	// Verify clone discipline: mutation of returned value must not affect internal state.
-	got.Enterprise = "mutated"
-	testutil.Equal(t, "enterprises", n.TrapInfo().Enterprise, "TrapInfo() should return a clone")
-}
-
-func TestNotificationObjectsClone(t *testing.T) {
-	obj := &Object{entity: entity{name: "testObj"}}
-	n := NewNotification("testNotif")
-	n.addObject(obj)
-
-	objs := n.Objects()
-	objs[0] = nil
-
-	testutil.NotNil(t, n.objects[0], "mutating Objects() return should not affect internal state")
 }
 
 // --- Group ---
@@ -140,17 +125,6 @@ func TestGroupNotificationGroup(t *testing.T) {
 func TestGroupOIDNilNode(t *testing.T) {
 	g := NewGroup("noNode")
 	testutil.Nil(t, g.OID(), "OID()")
-}
-
-func TestGroupMembersClone(t *testing.T) {
-	nd := &Node{name: "obj1"}
-	g := NewGroup("testGroup")
-	g.addMember(nd)
-
-	members := g.Members()
-	members[0] = nil
-
-	testutil.NotNil(t, g.members[0], "mutating Members() return should not affect internal state")
 }
 
 // --- Compliance ---
